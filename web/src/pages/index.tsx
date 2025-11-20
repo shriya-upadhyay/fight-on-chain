@@ -1,7 +1,8 @@
 import Head from 'next/head';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
-import Navbar from '../components/Navbar';  // Add this import
+import Navbar from '../components/Navbar';
+import Link from 'next/link';  // Add this import
 
 
 export default function Home() {
@@ -47,7 +48,15 @@ export default function Home() {
           {/* Action Area */}
           <div className="flex flex-col items-center gap-8 pt-8">
             <div className="transform transition-transform hover:scale-105 duration-500">
-              <ConnectButton label="Connect Wallet" />
+              {isConnected ? (
+                <Link href="/dashboard">
+                  <button className="px-8 py-4 rounded-full bg-[#990000] hover:bg-[#b91c1c] text-white font-medium text-base transition-colors shadow-lg shadow-red-900/20 hover:shadow-xl hover:shadow-red-900/30">
+                    Enter Game
+                  </button>
+                </Link>
+              ) : (
+                <ConnectButton label="Connect Wallet" />
+              )}
             </div>
             
             {/* Social Proof */}
