@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import Navbar from '../components/Navbar';
-import Link from 'next/link';  // Add this import
+import Link from 'next/link';  
 
 
 export default function Home() {

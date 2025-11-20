@@ -59,9 +59,16 @@ export default function Navbar({ variant = 'standard', showLogoDot = true }: Nav
     <nav className="fixed top-0 left-0 w-full z-50 border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
-          {showLogoDot && (
-            <div className="w-2 h-2 bg-red-600 rounded-full group-hover:animate-pulse" />
-          )}
+        {showLogoDot && (
+              <div className="relative flex h-3 w-3">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  isConnected ? 'bg-green-500' : 'bg-red-600'
+                }`}></span>
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${
+                  isConnected ? 'bg-green-600' : 'bg-red-700'
+                }`}></span>
+              </div>
+            )}
           <span className="font-serif font-medium text-neutral-300">Fight On-Chain</span>
         </Link>
         <ConnectButton showBalance={false} chainStatus="icon" accountStatus="avatar" />
