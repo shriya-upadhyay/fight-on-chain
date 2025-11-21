@@ -51,11 +51,35 @@ contract FightOnChain {
         players.push(Player(walletAddress, name, score, tribe, block.timestamp, true));
     }
 
+    function removePlayer(address walletAddress) public onlyAdmin {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].walletAddress == walletAddress) {
+                players[i].isActive = false;
+            }
+        }
+    }
+
+    function removeAdmin(address walletAddress) public onlyAdmin {
+        for (uint256 i = 0; i < admins.length; i++) {
+            if (admins[i].walletAddress == walletAddress) {
+                admins[i].isActive = false;
+            }
+        }
+    }
+
     function getAdmins() public view returns (Admin[] memory) {
         return admins;
     }
 
     function getPlayers() public view returns (Player[] memory) {
         return players;
+    }
+
+    function updatePlayerScore(address walletAddress, uint256 score) public onlyAdmin {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].walletAddress == walletAddress) {
+                players[i].score += score;
+            }
+        }
     }
 }
