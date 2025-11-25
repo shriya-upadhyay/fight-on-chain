@@ -53,7 +53,7 @@ export function useAllPlayers(address: string) {
         const { data, error } = await supabase
           .from('users')
           .select('wallet_address, name, tribe, score, is_admin, created_at')
-          .order('wallet_address');
+          .order('score', { ascending: false });
 
         if (error) {
           console.error('Error fetching users from database:', error);
@@ -76,8 +76,19 @@ export function useAllPlayers(address: string) {
   console.log('dbError', dbError);
   console.log('dbLoading', dbLoading);
 
-  // Merge chain data (scores) with database data (name, tribe, etc.)
-  const chainPlayers = (chainData as ChainPlayer[] | undefined) || [];
+  let chainPlayers: ChainPlayer[] = Array.isArray(chainData)
+  ? (chainData as ChainPlayer[])
+  : [];
+
+// Remove bogus entries (common in Solidity dynamic arrays)
+chainPlayers = chainPlayers.filter(
+  (p) =>
+    p.walletAddress &&
+    p.walletAddress.toLowerCase() !== "0x0000000000000000000000000000000000000000" &&
+    p.score !== null &&
+    p.score !== undefined
+);
+
   
   // Create a map of wallet_address -> database user for quick lookup
   const dbUsersMap = new Map(
@@ -103,15 +114,8 @@ export function useAllPlayers(address: string) {
     };
   });
 
-  // Sort by score (descending) - highest scores first
-  const sortedPlayers = [...mergedPlayers].sort((a, b) => {
-    if (a.score > b.score) return -1;
-    if (a.score < b.score) return 1;
-    return 0;
-  });
-
   return {
-    players: sortedPlayers,
+    players: mergedPlayers,
     isError: chainError || dbError,
     isLoading: chainLoading || dbLoading,
   };

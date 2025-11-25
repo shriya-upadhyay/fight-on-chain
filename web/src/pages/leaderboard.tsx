@@ -6,13 +6,6 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 const contractAddress = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '') as `0x${string}`;
 
-const mockPlayers = [
-    { walletAddress: '0x1234567890abcdef1234567890abcdef12345678', name: 'Ava Solaris', score: BigInt(240), tribe: 'Genesis', joinDate: "2025-12-17T03:24:00-08:00", isActive: true },
-    { walletAddress: '0x2234567890abcdef1234567890abcdef12345678', name: 'Kai Nebula', score: BigInt(210), tribe: 'Genesis', joinDate: "2025-12-17T03:24:00-08:00", isActive: true },
-    { walletAddress: '0x3234567890abcdef1234567890abcdef12345678', name: 'Rin Atlas', score: BigInt(198), tribe: 'Genesis', joinDate: "2025-12-17T03:24:00-08:00", isActive: true },
-    { walletAddress: '0x4234567890abcdef1234567890abcdef12345678', name: 'Nova Hyperion', score: BigInt(150), tribe: 'Genesis', joinDate: "2025-12-17T03:24:00-08:00", isActive: true },
-    { walletAddress: '0x5234567890abcdef1234567890abcdef12345678', name: 'Echo Meridian', score: BigInt(120), tribe: 'Aurora', joinDate: "2025-12-17T03:24:00-08:00", isActive: true },
-];
 
 function Leaderboard() {
     const { address, isConnected } = useAccount();
