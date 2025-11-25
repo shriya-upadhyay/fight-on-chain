@@ -16,6 +16,6 @@ const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID 
 export const config = getDefaultConfig({
   appName: 'Fight On-Chain',
   projectId: walletConnectProjectId,
-  chains: [process.env.NEXT_PUBLIC_CHAIN] as any,
+  chains: process.env.NEXT_PUBLIC_ENABLE_TESTNETS === 'false' ? [mainnet] : [sepolia],
   ssr: true,
 });
