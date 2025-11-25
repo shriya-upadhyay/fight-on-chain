@@ -73,7 +73,7 @@ export default function Admin() {
         .from("users")
         .upsert({
             name: playerName,
-            wallet_address: playerWalletAddress,
+            wallet_address: playerWalletAddress.toLowerCase(),
             is_admin: false,
             score: playerScore,
             tribe: playerTribe,
