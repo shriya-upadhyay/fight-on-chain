@@ -48,6 +48,8 @@ export default function Navbar({ variant = 'standard', showLogoDot = true }: Nav
     if (!isConnected || !address) {
       // Clear signed in address when disconnected
       localStorage.removeItem('supabase_signed_in_address');
+      localStorage.removeItem('is_admin');
+      setUser(null);
       return;
     }
 
@@ -56,7 +58,45 @@ export default function Navbar({ variant = 'standard', showLogoDot = true }: Nav
       return;
     }
 
-    // Check if user is already authenticated in Supabase
+    // Early return: Check localStorage first to avoid unnecessary async calls
+    const storedSignedInAddress = localStorage.getItem('supabase_signed_in_address');
+    if (storedSignedInAddress === address.toLowerCase()) {
+      // We have a stored address match - verify session exists but don't force re-sign
+      const checkAuth = async () => {
+        isCheckingAuthRef.current = true;
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          // If we have a valid session for this wallet, just set user state
+          if (session && !error) {
+            const sessionSub = session.user.user_metadata?.sub || '';
+            const sessionWalletAddress = sessionSub.startsWith('web3:ethereum:') 
+              ? sessionSub.replace('web3:ethereum:', '').toLowerCase()
+              : null;
+            
+            if (sessionWalletAddress === address.toLowerCase()) {
+              // Session is valid for this wallet, just restore user state
+              setUser(session.user);
+              isCheckingAuthRef.current = false;
+              return;
+            }
+          }
+          // If no valid session, continue to sign in below
+        } catch (err) {
+          console.error("Error checking session:", err);
+        } finally {
+          isCheckingAuthRef.current = false;
+        }
+      };
+      
+      // Only check session if user state is not set
+      if (!user) {
+        checkAuth();
+      }
+      return; // Don't proceed to sign-in if we have localStorage match
+    }
+
+    // No localStorage match - need to check session and potentially sign in
     const checkAuth = async () => {
       isCheckingAuthRef.current = true;
       try {
@@ -65,20 +105,11 @@ export default function Navbar({ variant = 'standard', showLogoDot = true }: Nav
         // If we have a valid session, verify it's for the current wallet
         if (session && !error) {
           // Extract wallet address from session metadata
-          // The wallet address is in rawUserMetaData.sub as "web3:ethereum:0x..."
           const sessionSub = session.user.user_metadata?.sub || '';
           const sessionWalletAddress = sessionSub.startsWith('web3:ethereum:') 
             ? sessionSub.replace('web3:ethereum:', '').toLowerCase()
             : null;
           const currentWalletAddress = address?.toLowerCase();
-          
-          console.log("📋 Session check:", {
-            id: session.user.id,
-            sessionWallet: sessionWalletAddress,
-            currentWallet: currentWalletAddress,
-            match: sessionWalletAddress === currentWalletAddress,
-            rawUserMetaData: session.user.user_metadata
-          });
           
           // If session is for a different wallet, sign out and sign in with new wallet
           if (sessionWalletAddress && sessionWalletAddress !== currentWalletAddress) {
