@@ -2,6 +2,8 @@ import Head from "next/head";
 import Navbar from "../components/Navbar";
 import { useAllPlayers } from "../hooks/useAllPlayers";
 import FightOnChain from "../utils/FightOnChain.json";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
 const contractAddress = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '') as `0x${string}`;
 
 const mockPlayers = [
@@ -13,7 +15,8 @@ const mockPlayers = [
 ];
 
 function Leaderboard() {
-    const { players, isLoading, isError } = useAllPlayers();
+    const { address, isConnected } = useAccount();
+    const { players, isLoading, isError } = useAllPlayers(address || '');
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-red-900/30 selection:text-white overflow-x-hidden">
@@ -21,6 +24,18 @@ function Leaderboard() {
                 <title>Leaderboard | Fight On-Chain</title>
             </Head>
             <Navbar variant="standard" />
+
+            {!isConnected ? (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6">
+            <h2 className="text-3xl font-serif text-white">Access Restricted</h2>
+            <p className="text-neutral-500 max-w-md mx-auto">
+              Connect your wallet to retrieve your data and status.
+            </p>
+            <div className="scale-110">
+                <ConnectButton />
+            </div>
+          </div>
+        ) : (
 
             <main className="pt-32 pb-16 px-6 max-w-5xl mx-auto space-y-8">
                 <header className="space-y-2 text-center">
@@ -100,6 +115,7 @@ function Leaderboard() {
                     </div>
                 )}
             </main>
+        )}
         </div>
     );
 }

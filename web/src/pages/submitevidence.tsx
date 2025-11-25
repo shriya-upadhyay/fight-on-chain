@@ -2,10 +2,12 @@ import Head from 'next/head';
 import Navbar from '../components/Navbar';
 import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
 
 function SubmitEvidence() {
   const [loading, setLoading] = useState(false);
+  const { address, isConnected } = useAccount();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const handleSubmitEvidence = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -75,6 +77,17 @@ function SubmitEvidence() {
           </Head>
           <Navbar variant="standard" />
       
+          {!isConnected ? (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6">
+            <h2 className="text-3xl font-serif text-white">Access Restricted</h2>
+            <p className="text-neutral-500 max-w-md mx-auto">
+              Connect your wallet to retrieve your data and status.
+            </p>
+            <div className="scale-110">
+                <ConnectButton />
+            </div>
+          </div>
+        ) : (
           <main className="pt-32 pb-16 px-6 max-w-3xl mx-auto space-y-8">
             <header className="space-y-2 text-center">
               <p className="text-xs font-mono tracking-[0.3em] text-red-500 uppercase">Submit Proof</p>
@@ -195,6 +208,7 @@ function SubmitEvidence() {
           </button>
         </form>
           </main>
+        )}
         </div>
       );
 }

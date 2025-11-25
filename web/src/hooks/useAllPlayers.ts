@@ -28,7 +28,7 @@ interface DatabaseUser {
   created_at: string; // ISO timestamp string
 }
 
-export function useAllPlayers() {
+export function useAllPlayers(address: string) {
   const [dbUsers, setDbUsers] = useState<DatabaseUser[]>([]);
   const [dbLoading, setDbLoading] = useState(true);
   const [dbError, setDbError] = useState(false);

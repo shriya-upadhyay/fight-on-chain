@@ -29,12 +29,9 @@ export default function Dashboard() {
             <main className="pt-32 pb-20 px-6 max-w-7xl mx-auto">
             {!isConnected ? (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-neutral-900 flex items-center justify-center border border-white/10">
-              <span className="text-3xl">🔒</span>
-            </div>
             <h2 className="text-3xl font-serif text-white">Access Restricted</h2>
             <p className="text-neutral-500 max-w-md mx-auto">
-              Connect your wallet to retrieve your personnel file and operational status.
+              Connect your wallet to retrieve your data and status.
             </p>
             <div className="scale-110">
                 <ConnectButton />
