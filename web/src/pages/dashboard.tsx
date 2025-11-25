@@ -4,6 +4,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useEnsAvatar, useEnsName } from 'wagmi';
 import Link from 'next/link';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
+import { useAllPlayers } from '../hooks/useAllPlayers';
 import Navbar from '../components/Navbar';  
 import FightOnChain from '../utils/FightOnChain.json';
 
@@ -14,8 +15,31 @@ export default function Dashboard() {
     const { data: ensName } = useEnsName({ address });  
     const { data: ensAvatar } = useEnsAvatar({ name: ensName || undefined });  
     const {profile, isError, isLoading} = usePlayerProfile(address);
+    const { players: allPlayers } = useAllPlayers(address || '');
     const formattedJoinDate = profile?.joinDate? new Date(Number(profile.joinDate) * 1000).toLocaleDateString(): 'Unknown';
     
+    // Sort players by score (descending) to ensure correct ranking
+    const sortedPlayers = [...allPlayers].sort((a: any, b: any) => {
+        const scoreA = Number(a.score || 0);
+        const scoreB = Number(b.score || 0);
+        return scoreB - scoreA; // Descending order
+    });
+    
+    // Calculate user's rank
+    const userRank = address ? (() => {
+        const userIndex = sortedPlayers.findIndex(
+            (p: any) => p.walletAddress.toLowerCase() === address.toLowerCase()
+        );
+        return userIndex >= 0 ? userIndex + 1 : null; // Rank is 1-indexed
+    })() : null;
+    
+    // Calculate percentile (top X%)
+    const userPercentile = userRank && sortedPlayers.length > 0
+        ? Math.round(((sortedPlayers.length - userRank + 1) / sortedPlayers.length) * 100)
+        : null;
+
+    console.log('userRank', userRank);
+    console.log('userPercentile', userPercentile);
     console.log('profile', profile);
     console.log('transmissions', profile?.transmissions);
     return (
@@ -118,8 +142,12 @@ export default function Dashboard() {
                 {/* Vitals Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <StatBox label="Reputation" value={profile?.score || 0} sub="Points" />
-                    <StatBox label="Global Rank" value="#42" sub="Top 30%" />
-                    <StatBox label="Safety Margin" value="+15" sub="Pts above Cutoff" highlight />
+                    <StatBox 
+                        label="Your Rank" 
+                        value={userRank ? `#${userRank}` : '--'} 
+                        sub="Can you beat it?" 
+                    />
+                    <StatBox label="Safety Margin" value={userPercentile ? `Top ${userPercentile}%` : 'Not ranked'} sub="No elimination yet 👀" highlight />
                 </div>
 
                 {/* Activity Feed */}

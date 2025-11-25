@@ -21,6 +21,7 @@ contract FightOnChain {
     Player [] public players;
 
     mapping(address => bool) public isAdmin;
+    mapping(address => bool) public isPlayer;
 
     // Event to log batch point awards with reason
     event PointsAwardedBatch(
@@ -81,6 +82,8 @@ contract FightOnChain {
     }
 
     function addPlayer(address walletAddress, uint256 score) public onlyAdmin {
+        require(!isPlayer[walletAddress], "Player already exists");
+        isPlayer[walletAddress] = true;
         players.push(Player(walletAddress, score));
     }
 
