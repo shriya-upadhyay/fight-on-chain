@@ -225,7 +225,7 @@ export default function Navbar({ variant = 'standard', showLogoDot = true }: Nav
     const { data, error } = await supabase.auth.signInWithWeb3({
       chain: 'ethereum',
       statement: `Sign in to Fight On-Chain at ${origin}`,
-      wallet: provider, // Use the actual connected wallet provider
+      wallet: provider, 
     });
     console.log("📝 signInWithWeb3() completed", { hasData: !!data, hasError: !!error });
 
