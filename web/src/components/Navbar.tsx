@@ -219,9 +219,12 @@ export default function Navbar({ variant = 'standard', showLogoDot = true }: Nav
     }
 
     console.log("📝 Calling supabase.auth.signInWithWeb3()...");
+    
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://example.com';
+    
     const { data, error } = await supabase.auth.signInWithWeb3({
       chain: 'ethereum',
-      statement: 'I accept the Terms of Service at https://example.com/tos',
+      statement: `Sign in to Fight On-Chain at ${origin}`,
       wallet: provider, // Use the actual connected wallet provider
     });
     console.log("📝 signInWithWeb3() completed", { hasData: !!data, hasError: !!error });
