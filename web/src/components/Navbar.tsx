@@ -260,6 +260,7 @@ export default function Navbar({ variant = 'standard', showLogoDot = true }: Nav
           const { error } = await supabase
             .from('users')
             .upsert({
+              id: user.id,
               wallet_address: address.toLowerCase(),
               is_admin: true,
               name: admin.name || null,
@@ -354,8 +355,7 @@ export default function Navbar({ variant = 'standard', showLogoDot = true }: Nav
               <span className="font-serif font-medium text-neutral-300">Fight On-Chain</span>
             </Link>
             <div className="flex items-center gap-2 px-3 py-1 rounded border border-red-900/50 bg-red-900/10">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <span className="font-mono text-xs font-bold tracking-widest text-red-400">ADMIN_MODE</span>
+              <span className="font-mono text-xs font-bold tracking-widest text-red-400">ADMIN MODE</span>
             </div>
           </div>
 

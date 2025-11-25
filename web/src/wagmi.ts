@@ -8,18 +8,14 @@ import {
   sepolia,
 } from 'wagmi/chains';
 
+// WalletConnect is optional - only needed for mobile wallets and WalletConnect-compatible wallets
+// For desktop browsers with MetaMask/Coinbase Wallet, you can use a dummy project ID
+// Get a free one at https://cloud.walletconnect.com/ if you want mobile support
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '00000000000000000000000000000000000000000000';
 
 export const config = getDefaultConfig({
-  appName: 'RainbowKit App',
-  projectId: 'YOUR_PROJECT_ID',
-  chains: [
-    mainnet,
-    sepolia,
-    polygon,
-    optimism,
-    arbitrum,
-    base,
-    ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === 'true' ? [sepolia] : []),
-  ],
+  appName: 'Fight On-Chain',
+  projectId: walletConnectProjectId,
+  chains: [process.env.NEXT_PUBLIC_CHAIN] as any,
   ssr: true,
 });

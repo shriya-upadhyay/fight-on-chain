@@ -2,7 +2,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useAccount, useWriteContract } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAdminInbox } from '../hooks/useAdminInbox';
 import { useIsAdmin } from '../hooks/useIsAdmin';
@@ -16,8 +16,11 @@ const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '') as `0x
 export default function Admin() {
   const router = useRouter();
   const { isConnected, address } = useAccount();
-  const { pending, verified, approveSubmission, rejectSubmission, markAsMinted } = useAdminInbox();
-  const { writeContract, isPending: isTxPending } = useWriteContract();
+  const { pending, verified, users, approveSubmission, rejectSubmission, markAsMinted } = useAdminInbox();
+  const { writeContract, isPending: isTxPending, data: hash } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
   const [adminName, setAdminName] = useState('');
   const [adminWalletAddress, setAdminWalletAddress] = useState(''); 
   const [playerName, setPlayerName] = useState('');
@@ -27,13 +30,18 @@ export default function Admin() {
 
   const { isAdmin, isLoading: isCheckingAdmin } = useIsAdmin(address);
 
+  // Show success alert when transaction is confirmed
+  useEffect(() => {
+    if (isConfirmed && hash) {
+      alert(`Batch mint completed! Transaction: ${hash.slice(0, 10)}...${hash.slice(-8)}`);
+    }
+  }, [isConfirmed, hash]);
+
   // Wait for contract check to complete, then verify admin status
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (isCheckingAdmin) return; // Don't redirect while still checking
-    if (isAdmin === undefined) return; // Don't redirect if we don't have an answer yet
-    
-    // Contract check is complete - use contract as source of truth
+    if (isCheckingAdmin) return; 
+    if (isAdmin === undefined) return; 
     const storedIsAdmin = localStorage.getItem('is_admin') === 'true';
     
     console.log('Admin check complete:', {
@@ -42,13 +50,10 @@ export default function Admin() {
       isCheckingAdmin
     });
     
-    // Contract is source of truth - if contract says not admin, redirect
-    // (localStorage might not be set yet, but contract check is definitive)
     if (isAdmin === false) {
-      console.log('🚫 Not admin according to contract - redirecting to dashboard...');
+      console.log('Not admin according to smartcontract - redirecting to dashboard...');
       router.push('/dashboard');
     }
-    // If contract says admin but localStorage doesn't, that's okay - Navbar will set it
   }, [isAdmin, isCheckingAdmin, router]);
 
   const handleAddPlayer = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -92,69 +97,115 @@ export default function Admin() {
   };
   const handleAddAdmin =  async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // writeContract({
-    //   address: '0xYourContractAddress...',
-    // //   abi: CryptoClubGameV3.abi,
-    //   functionName: 'addAdmin',
-    //   args: [adminWalletAddress, adminName],
-    // });
+    writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: FightOnChain.abi,
+        functionName: 'addAdmin',
+        args: [adminWalletAddress, adminName],
+      });
 
-    if (!playerWalletAddress || !playerName) return alert("Fill in all fields");
+    if (!adminWalletAddress || !adminName) return alert("Fill in all fields");
 
   try {
     const { error } = await supabase
       .from("users")
       .upsert({
-        wallet_address: playerWalletAddress,
-        name: playerName,
-        is_admin: false,
-        score: playerScore ? parseInt(playerScore) : 0,
-        tribe: playerTribe || null
+        wallet_address: adminWalletAddress.toString().toLowerCase(),
+        name: adminName,
+        is_admin: true,
+        score: 0,
+        tribe: null
       }, { onConflict: "wallet_address" });
 
     if (error) throw error;
 
-    alert(`Player ${playerName} added!`);
-    setPlayerName("");
-    setPlayerWalletAddress("");
-    setPlayerScore("");
-    setPlayerTribe("");
+    alert(`Admin ${adminName} added!`);
+    setAdminName("");
+    setAdminWalletAddress("");
   } catch (err: any) {
     console.error(err);
-    alert(err.message || "Something went wrong adding the player");
+    alert(err.message || "Something went wrong adding the admin");
   }
   };
-  // --- The "Big Red Button" Logic ---
-  const handleBatchMint = () => {
+
+
+  const updateScores = async (addresses: string[], amounts: bigint[]) => {
+    console.log('addresses', addresses);
+    console.log('amounts', amounts);
+
+    for (let i = 0; i < addresses.length; i++) {
+      const address = addresses[i];
+      const amount = Number(amounts[i]);
+      
+      if (!address) continue;
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('score')
+        .eq('wallet_address', address.toLowerCase())
+        .single();
+
+      const currentScore = userData?.score || 0;
+      const newScore = currentScore + amount;
+
+      // Update score
+      const { error } = await supabase
+        .from('users')
+        .update({ score: newScore })
+        .eq('wallet_address', address.toLowerCase());
+
+      if (error) {
+        console.error(`Error updating score for ${address}:`, error);
+      }
+    }
+  };
+
+  const handleBatchMint = async () => {
     if (verified.length === 0) return;
 
-    // 1. Prepare the data arrays for Solidity
-    const addresses = verified.map(s => s.walletAddress);
-    const amounts = verified.map(s => BigInt(s.points));
-    // Note: Our contract expects a single reason string for the batch, 
-    // or we can just pass "Weekly Verification" to save gas.
+    // Filter out undefined addresses and create parallel arrays
+    const validEntries = verified
+      .map(s => {
+        const user = users.find(user => user.id === s.user_id);
+        if (!user?.wallet_address) return null;
+        return {
+          address: user.wallet_address.toLowerCase(),
+          amount: BigInt(s.points),
+          id: s.id
+        };
+      })
+      .filter((entry): entry is { address: string; amount: bigint; id: number } => entry !== null);
+
+    const addresses = validEntries.map(e => e.address);
+    const amounts = validEntries.map(e => e.amount);
+
+    if (addresses.length === 0) {
+      alert("No valid addresses found for batch mint.");
+      return;
+    }
+
+    console.log('addresses', addresses);
+    console.log('amounts', amounts);
+
+    await writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FightOnChain.abi,
+      functionName: 'awardPointsBatch',
+      args: [addresses, amounts, "Verifying " + (addresses.length) + " submissions on " + new Date().toLocaleDateString() + " by " + adminName + " (" + adminWalletAddress + ")"],
+    });
+
+    markAsMinted(validEntries.map(e => e.id));
     
-    // 2. Call the Contract
-    // writeContract({
-    //   address: '0xYourContractAddress...',
-    // //   abi: CryptoClubGameV3.abi,
-    //   functionName: 'awardPointsBatch',
-    //   args: [addresses, amounts, "Weekly Verification"],
-    // }, {
-    //   onSuccess: () => {
-    //     // 3. If TX succeeds, update Firebase to remove them from the list
-    //     // In production, wait for tx.wait() receipt before doing this!
-    //     markAsMinted(verified.map(s => s.id));
-    //     alert("Batch Mint Executed! Points distributed.");
-    //   }
-    // });
+    await updateScores(addresses, amounts);
+    alert("Scores updated.");
+   
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-red-900/30">
       <Head><title>Admin Dashboard | Fight On-Chain</title></Head>
       
-      <Navbar variant="admin" />  {/* Replace nav section */}
+      <Navbar variant="admin" /> 
       
       {(!isConnected || isCheckingAdmin) ? (
          <div className="pt-32 p-20 text-center text-neutral-500">
@@ -180,9 +231,42 @@ export default function Admin() {
                 {pending.map((item) => (
                     <div key={item.id} className="p-4 rounded-xl bg-[#111] border border-white/5 hover:border-white/10 transition-colors">
                         <div className="flex justify-between items-start mb-3">
-                            <div>
-                                <p className="font-bold text-lg">{item.action_name}</p>
-                                <p className="text-xs text-neutral-500 font-mono">{item.walletAddress}</p>
+                            <div className="w-full space-y-2">
+                                <div className="flex flex-col gap-1">
+                                    <p className="text-lg font-serif text-white">{item.name}</p>
+                                    <p className="text-xs text-neutral-400 font-mono">
+                                        {users.find(user => user.id === item.user_id)?.name || 'Unknown User'}
+                                        {' · '}
+                                        {users.find(user => user.id === item.user_id)?.wallet_address.slice(0, 8)}...
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                                        <p className="text-neutral-500 uppercase tracking-widest">Submitted</p>
+                                        <p className="text-white">
+                                            {item.event_date ? new Date(item.event_date).toLocaleDateString() : 'Unknown'}
+                                        </p>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                                        <p className="text-neutral-500 uppercase tracking-widest">Points</p>
+                                        <p className="text-white font-semibold">+{item.points}</p>
+                                    </div>
+                                </div>
+
+                                <p className="text-sm text-neutral-300 leading-relaxed">{item.description || 'No description provided.'}</p>
+
+                                {item.proof_photo ? (
+                                    <div className="rounded-xl overflow-hidden border border-white/5 bg-black/40">
+                                        <img 
+                                            src={item.proof_photo} 
+                                            alt="Proof Photo" 
+                                            className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
+                                        />
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-neutral-500 italic">No proof photo supplied.</p>
+                                )}
                             </div>
                             <span className="px-2 py-1 rounded bg-white/10 text-xs font-bold">+{item.points} Pts</span>
                         </div>
@@ -217,7 +301,7 @@ export default function Admin() {
             <div className="p-6 rounded-2xl border border-green-900/30 bg-green-900/5 space-y-6">
                 <div className="flex justify-between text-sm">
                     <span className="text-neutral-400">Total Transactions</span>
-                    <span className="text-white font-mono">1 (Batch)</span>
+                    <span className="text-white font-mono">{verified.length} (Batch)</span>
                 </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-neutral-400">Total Points</span>
@@ -228,22 +312,22 @@ export default function Admin() {
 
                 <button
                     onClick={handleBatchMint}
-                    disabled={verified.length === 0 || isTxPending}
+                    disabled={verified.length === 0 || isTxPending || isConfirming}
                     className="w-full py-4 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold text-lg shadow-lg shadow-green-900/20 transition-all"
                 >
-                    {isTxPending ? 'Minting...' : 'MINT BATCH TO CHAIN'}
+                    {isTxPending ? 'Sending...' : isConfirming ? 'Confirming...' : 'MINT BATCH TO CHAIN'}
                 </button>
 
                 <p className="text-center text-[10px] text-green-500/50 uppercase tracking-widest">
-                    authorized personnel only
+                    authorized users only
                 </p>
             </div>
 
             {/* List of items ready to go */}
             <div className="opacity-50 pointer-events-none">
                 {verified.map((item) => (
-                     <div key={item.id} className="flex justify-between py-2 border-b border-white/5 text-xs text-neutral-500">
-                        <span>{item.walletAddress.slice(0,6)}...</span>
+                     <div key={item.user_id} className="flex justify-between py-2 border-b border-white/5 text-xs text-neutral-500">
+                            <span>{users.find(user => user.id === item.user_id)?.wallet_address.slice(0,6)}...</span>
                         <span>+{item.points}</span>
                      </div>
                 ))}

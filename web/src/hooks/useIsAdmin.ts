@@ -1,7 +1,7 @@
 import { useReadContract } from 'wagmi';
 import FightOnChain from '../utils/FightOnChain.json';
 
-const contractAddress = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x02C5dfdcFEE44912d516A26b1C36aFaf84506c9f') as `0x${string}`;
+const contractAddress = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '') as `0x${string}`;
 
 
 export interface Admin {
@@ -12,15 +12,17 @@ export interface Admin {
 }
 
 export function useIsAdmin(address: string | undefined) {
+  const addressLower = address?.toLowerCase();
   const { data: isAdminBool, isError, isLoading } = useReadContract({
     address: contractAddress, 
     abi: FightOnChain.abi,
     functionName: 'isAdmin',
-    args: address ? [address as `0x${string}`] : undefined,
+    args: addressLower ? [addressLower as `0x${string}`] : undefined,
     query: {
       enabled: !!address,
     },
   });
+
 
   const isAdmin = isAdminBool as boolean | undefined;
 

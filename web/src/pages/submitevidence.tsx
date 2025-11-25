@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabaseClient';
 
 function SubmitEvidence() {
   const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const handleSubmitEvidence = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
@@ -41,12 +43,12 @@ function SubmitEvidence() {
       }
 
       const { error: insertError } = await supabase
-        .from("user_actions")
+        .from("actions")
         .insert({
           user_id: user.id,
-          action_name: actionName,
+          name: actionName,
           description: description,
-          proof_photo_url: proofUrl,
+          proof_photo: proofUrl,
           approved: false,
           points: parseInt(points),
           event_date: eventDate,
@@ -56,6 +58,8 @@ function SubmitEvidence() {
 
       alert("Submission received!");
       form.reset();
+      setSelectedFile(null);
+      setPreviewUrl(null);
     } catch (err: any) {
       console.error(err);
       alert(err.message);
@@ -123,12 +127,62 @@ function SubmitEvidence() {
             <label className="text-xs text-neutral-500 uppercase tracking-[0.3em]">
               Upload Proof
             </label>
-            <div className="relative flex items-center justify-center border border-dashed border-neutral-700 rounded-xl bg-black/30 px-4 py-6 text-center">
-              <input type="file" name = "proofFile" className="absolute inset-0 opacity-0 cursor-pointer" />
-              <div className="space-y-1">
-                <p className="text-sm text-neutral-300">Drag & drop or click to upload</p>
-                <p className="text-xs text-neutral-500">PDF, image, or video up to 25MB</p>
-              </div>
+            <div className="relative flex items-center justify-center border border-dashed border-neutral-700 rounded-xl bg-black/30 px-4 py-6 text-center min-h-[120px]">
+              <input 
+                type="file" 
+                name="proofFile" 
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setSelectedFile(file);
+                    // Create preview URL for images
+                    if (file.type.startsWith('image/')) {
+                      const url = URL.createObjectURL(file);
+                      setPreviewUrl(url);
+                    } else {
+                      setPreviewUrl(null);
+                    }
+                  }
+                }}
+              />
+              {selectedFile ? (
+                <div className="space-y-2">
+                  {previewUrl ? (
+                    <img 
+                      src={previewUrl} 
+                      alt="Preview" 
+                      className="max-h-32 mx-auto rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 mx-auto rounded-lg bg-neutral-800 flex items-center justify-center">
+                      <span className="text-2xl">📄</span>
+                    </div>
+                  )}
+                  <p className="text-sm text-neutral-300 font-medium">{selectedFile.name}</p>
+                  <p className="text-xs text-neutral-500">
+                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedFile(null);
+                      setPreviewUrl(null);
+                      const fileInput = document.querySelector('input[name="proofFile"]') as HTMLInputElement;
+                      if (fileInput) fileInput.value = '';
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300 underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-sm text-neutral-300">Drag & drop or click to upload</p>
+                  <p className="text-xs text-neutral-500">PDF, image, or video up to 25MB</p>
+                </div>
+              )}
             </div>
           </div>
 

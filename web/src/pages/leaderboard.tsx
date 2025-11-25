@@ -87,7 +87,9 @@ function Leaderboard() {
                                         <div className="text-right">
                                             <span className="text-xs text-neutral-500 uppercase tracking-widest">Joined: </span>
                                             <span className="text-sm text-neutral-300">
-                                                {player.joinDate ? new Date(player.joinDate).toLocaleDateString() : 'Unknown'}
+                                                {player.joinDate
+                                                    ? new Date(player.joinDate * 1000).toLocaleDateString()
+                                                    : 'Unknown'}
                                             </span>
                                         </div>
                                     </div>

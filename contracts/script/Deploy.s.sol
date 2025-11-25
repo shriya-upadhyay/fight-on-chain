@@ -18,8 +18,14 @@ contract DeployFightOnChain is Script {
         fightOnChain = new FightOnChain();
 
         // Log the deployed address
+        console.log("==========================================");
         console.log("FightOnChain deployed to:", address(fightOnChain));
-        console.log("Copy this address to your web/.env.local as NEXT_PUBLIC_CONTRACT_ADDRESS");
+        console.log("==========================================");
+        console.log("Next steps:");
+        console.log("1. Copy this address to web/.env.local as NEXT_PUBLIC_CONTRACT_ADDRESS");
+        console.log("2. Add the first admin using addAdmin() function");
+        console.log("3. Deploy the frontend to Vercel");
+        console.log("==========================================");
 
         vm.stopBroadcast();
     }

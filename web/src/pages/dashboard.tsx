@@ -14,7 +14,10 @@ export default function Dashboard() {
     const { data: ensName } = useEnsName({ address });  
     const { data: ensAvatar } = useEnsAvatar({ name: ensName || undefined });  
     const {profile, isError, isLoading} = usePlayerProfile(address);
+    const formattedJoinDate = profile?.joinDate? new Date(Number(profile.joinDate) * 1000).toLocaleDateString(): 'Unknown';
     
+    console.log('profile', profile);
+    console.log('transmissions', profile?.transmissions);
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-red-900/30 selection:text-white">
             <Head>
@@ -71,7 +74,10 @@ export default function Dashboard() {
                         ? 'bg-green-900/20 border border-green-900/50 text-green-400'
                         : 'bg-red-900/20 border border-red-900/50 text-red-400'
                     }`}>
-                        Status: {profile?.isActive ? 'Active' : 'Inactive'}
+                        {localStorage.getItem('is_admin') === 'true' ? 
+                        'Status: Admin' : 
+                        'Status: ' + (profile?.isActive ? 'Active' : 'Inactive')
+                        }
                     </div>
                     
                     <h1 className="text-4xl font-serif text-white mb-1">
@@ -88,7 +94,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex justify-between items-center p-4 rounded-xl bg-white/5">
                             <span className="text-neutral-400 text-sm">Joined</span>
-                            <span className="text-white font-serif">{profile?.joinDate || 'Unknown'}</span>
+                            <span className="text-white font-serif">{formattedJoinDate || 'Unknown'}</span>
                         </div>
                     </div>
                 </div>
@@ -97,9 +103,12 @@ export default function Dashboard() {
               {/* Quick Actions */}
               <div className="p-8 rounded-[2rem] bg-gradient-to-b from-red-950/20 to-[#111] border border-white/5">
                 <h3 className="text-xl font-serif text-white mb-6">Operations</h3>
-                <button className="w-full py-4 bg-white text-black font-medium rounded-xl hover:bg-neutral-200 transition-colors shadow-lg shadow-white/5 mb-3">
-                    + Submit Evidence
-                </button>
+                <Link
+                    href="/submitevidence"
+                    className="block text-center w-full py-4 bg-white text-black font-medium rounded-xl hover:bg-neutral-200 transition-colors shadow-lg shadow-white/5 mb-3"
+                >
+                    Submit Evidence
+                </Link>
                 <p className="text-center text-xs text-neutral-500">
                     Upload proof of attendance to earn points.
                 </p>
@@ -111,7 +120,7 @@ export default function Dashboard() {
                 
                 {/* Vitals Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <StatBox label="Reputation" value="120" sub="Points" />
+                    <StatBox label="Reputation" value={profile?.score || 0} sub="Points" />
                     <StatBox label="Global Rank" value="#42" sub="Top 30%" />
                     <StatBox label="Safety Margin" value="+15" sub="Pts above Cutoff" highlight />
                 </div>
@@ -124,24 +133,21 @@ export default function Dashboard() {
                     </div>
 
                     <div className="space-y-0">
-                        <ActivityItem 
-                            title="Coffee Chat: Alice" 
-                            date="2 hrs ago" 
-                            points="+10" 
-                            status="Pending" 
-                        />
-                        <ActivityItem 
-                            title="Event: ZK Workshop" 
-                            date="2 days ago" 
-                            points="+20" 
-                            status="Verified" 
-                        />
-                        <ActivityItem 
-                            title="Genesis Form" 
-                            date="1 week ago" 
-                            points="-- " 
-                            status="Verified" 
-                        />
+                        {profile?.transmissions && profile.transmissions.length > 0 ? (
+                            profile.transmissions.map((transmission: any) => {
+                                return (
+                                    <ActivityItem 
+                                        key={transmission.id}
+                                        title={transmission.name || 'Untitled Event'}
+                                        date={transmission.event_date ? new Date(transmission.event_date).toLocaleDateString() : 'Unknown'}
+                                        points={transmission.points ? `+${transmission.points}` : '--'}
+                                        status={transmission.minted ? 'Minted' : transmission.approved ? 'Verified' : 'Pending'}
+                                    />
+                                );
+                            })
+                        ) : (
+                            <p className="text-neutral-500 text-center py-8 italic">No transmissions yet.</p>
+                        )}
                     </div>
                 </div>
 

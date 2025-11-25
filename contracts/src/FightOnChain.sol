@@ -22,6 +22,14 @@ contract FightOnChain {
 
     mapping(address => bool) public isAdmin;
 
+    // Event to log batch point awards with reason
+    event PointsAwardedBatch(
+        address indexed admin,
+        address[] addresses,
+        uint256[] amounts,
+        string reason,
+        uint256 timestamp
+    );
 
     modifier onlyAdmin() {
         require(isAdmin[msg.sender], "Only admins can perform this action");
@@ -82,6 +90,20 @@ contract FightOnChain {
                 players[i].score += score;
             }
         }
+    }
+    
+    function awardPointsBatch(address[] memory addresses, uint256[] memory amounts, string memory reason) public onlyAdmin {
+        require(addresses.length == amounts.length, "Arrays length mismatch");
+        
+        for (uint256 i = 0; i < addresses.length; i++) {
+            updatePlayerScore(addresses[i], amounts[i]);
+        }
+        
+        emit PointsAwardedBatch(msg.sender, addresses, amounts, reason, block.timestamp);
+    }
+
+    function getPlayers() public view returns (Player[] memory) {
+        return players;
     }
 
     constructor() {

@@ -10,9 +10,9 @@ interface Player {
   name: string;
   score: bigint;
   tribe: string;
-  joinDate: bigint;
+  joinDate: number;
   isActive: boolean;
-}
+} 
 
 interface ChainPlayer {
   walletAddress: string;
@@ -41,6 +41,11 @@ export function useAllPlayers() {
     args: [],
   });
 
+
+  console.log('chainData', chainData);
+  console.log('chainError', chainError);
+  console.log('chainLoading', chainLoading);
+
   // Get player info from database
   useEffect(() => {
     const fetchDbUsers = async () => {
@@ -67,6 +72,10 @@ export function useAllPlayers() {
     fetchDbUsers();
   }, []);
 
+  console.log('dbUsers', dbUsers);
+  console.log('dbError', dbError);
+  console.log('dbLoading', dbLoading);
+
   // Merge chain data (scores) with database data (name, tribe, etc.)
   const chainPlayers = (chainData as ChainPlayer[] | undefined) || [];
   
@@ -81,8 +90,8 @@ export function useAllPlayers() {
     
     // Convert created_at ISO string to Unix timestamp (bigint)
     const joinDate = dbUser?.created_at 
-      ? BigInt(Math.floor(new Date(dbUser.created_at).getTime() / 1000))
-      : BigInt(0);
+      ? (Math.floor(new Date(dbUser.created_at).getTime() / 1000))
+      : (0);
     
     return {
       walletAddress: chainPlayer.walletAddress,
