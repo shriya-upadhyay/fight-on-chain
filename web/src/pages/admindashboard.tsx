@@ -1,35 +1,21 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { useRouter } from 'next/router';
+import { useAccount, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAdminInbox } from '../hooks/useAdminInbox';
-// import CryptoClubGameV3 from '../utils/CryptoClubGameV2.json'; // ABI
+import { useIsAdmin } from '../hooks/useIsAdmin';
 import Navbar from '../components/Navbar';
+import { supabase } from '../lib/supabaseClient';
+import FightOnChain from '../utils/FightOnChain.json';
 
-const useIsAdmin = (address: string | undefined) => {
-    const { data, isError, isLoading } = useReadContract({
-        address: '0xYourContractAddress...',
-        // abi: CryptoClubGameV3.abi,
-        functionName: 'isAdmin',    
-        args: address ? [address] : undefined,
-        query: {
-          enabled: !!address,
-        },
-    });
-
-    console.log("isAdmin", data);
-    
-    return { 
-        isAdmin: data as boolean, 
-        isError, 
-        isLoading 
-    };
-};
+const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '') as `0x${string}`;
 
 
 export default function Admin() {
-  const { isConnected } = useAccount();
+  const router = useRouter();
+  const { isConnected, address } = useAccount();
   const { pending, verified, approveSubmission, rejectSubmission, markAsMinted } = useAdminInbox();
   const { writeContract, isPending: isTxPending } = useWriteContract();
   const [adminName, setAdminName] = useState('');
@@ -39,18 +25,72 @@ export default function Admin() {
   const [playerScore, setPlayerScore] = useState('');
   const [playerTribe, setPlayerTribe] = useState('');
 
-  const { isAdmin } = useIsAdmin(useAccount().address as string);
+  const { isAdmin, isLoading: isCheckingAdmin } = useIsAdmin(address);
 
-  const handleAddPlayer = (e: React.FormEvent<HTMLFormElement>) => {
+  // Wait for contract check to complete, then verify admin status
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isCheckingAdmin) return; // Don't redirect while still checking
+    if (isAdmin === undefined) return; // Don't redirect if we don't have an answer yet
+    
+    // Contract check is complete - use contract as source of truth
+    const storedIsAdmin = localStorage.getItem('is_admin') === 'true';
+    
+    console.log('Admin check complete:', {
+      storedIsAdmin,
+      isAdmin,
+      isCheckingAdmin
+    });
+    
+    // Contract is source of truth - if contract says not admin, redirect
+    // (localStorage might not be set yet, but contract check is definitive)
+    if (isAdmin === false) {
+      console.log('🚫 Not admin according to contract - redirecting to dashboard...');
+      router.push('/dashboard');
+    }
+    // If contract says admin but localStorage doesn't, that's okay - Navbar will set it
+  }, [isAdmin, isCheckingAdmin, router]);
+
+  const handleAddPlayer = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // writeContract({
-    //   address: '0xYourContractAddress...',
-    // //   abi: CryptoClubGameV3.abi,
-    //   functionName: 'addPlayer',
-    //   args: [playerWalletAddress, playerName, playerScore, playerTribe],
-    // });
+    
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: FightOnChain.abi,
+      functionName: 'addPlayer',
+      args: [playerWalletAddress, playerScore],
+    });
+
+    if (!playerWalletAddress || !playerScore || !playerTribe || !playerName) return alert("Fill in all fields");
+
+    try {
+        const { data, error } = await supabase
+        .from("users")
+        .upsert({
+            name: playerName,
+            wallet_address: playerWalletAddress,
+            is_admin: false,
+            score: playerScore,
+            tribe: playerTribe,
+        }, { onConflict: "wallet_address" }); 
+
+        console.log(data, error)
+
+        console.log(playerName, playerWalletAddress, playerScore, playerTribe)
+
+        if (error) throw error;
+
+        alert(`Player ${playerName} added!`);
+        setPlayerName("");
+        setPlayerWalletAddress("");
+        setPlayerScore("");
+        setPlayerTribe("");
+    } catch (err: any) {
+        console.error(err);
+        alert(err.message || "Something went wrong adding the player");
+    }
   };
-  const handleAddAdmin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddAdmin =  async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // writeContract({
     //   address: '0xYourContractAddress...',
@@ -58,6 +98,31 @@ export default function Admin() {
     //   functionName: 'addAdmin',
     //   args: [adminWalletAddress, adminName],
     // });
+
+    if (!playerWalletAddress || !playerName) return alert("Fill in all fields");
+
+  try {
+    const { error } = await supabase
+      .from("users")
+      .upsert({
+        wallet_address: playerWalletAddress,
+        name: playerName,
+        is_admin: false,
+        score: playerScore ? parseInt(playerScore) : 0,
+        tribe: playerTribe || null
+      }, { onConflict: "wallet_address" });
+
+    if (error) throw error;
+
+    alert(`Player ${playerName} added!`);
+    setPlayerName("");
+    setPlayerWalletAddress("");
+    setPlayerScore("");
+    setPlayerTribe("");
+  } catch (err: any) {
+    console.error(err);
+    alert(err.message || "Something went wrong adding the player");
+  }
   };
   // --- The "Big Red Button" Logic ---
   const handleBatchMint = () => {
@@ -87,14 +152,21 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-red-900/30">
-      <Head><title>Oracle Command | Fight On-Chain</title></Head>
+      <Head><title>Admin Dashboard | Fight On-Chain</title></Head>
       
       <Navbar variant="admin" />  {/* Replace nav section */}
       
-      {(!isConnected && !isAdmin) ? (
-         <div className="p-20 text-center text-neutral-500">Connect Officer Wallet</div>
+      {(!isConnected || isCheckingAdmin) ? (
+         <div className="pt-32 p-20 text-center text-neutral-500">
+           {!isConnected ? 'Connect Officer Wallet' : 'Verifying admin status...'}
+         </div>
+      ) : !isAdmin ? (
+         <div className="pt-32 p-20 text-center text-red-500">
+           <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
+           <p className="text-neutral-400">You do not have admin privileges.</p>
+         </div>
       ) : (
-        <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <main className="pt-32 max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           {/* --- COLUMN 1: THE INBOX (Pending) --- */}
           <div className="space-y-6">
@@ -109,7 +181,7 @@ export default function Admin() {
                     <div key={item.id} className="p-4 rounded-xl bg-[#111] border border-white/5 hover:border-white/10 transition-colors">
                         <div className="flex justify-between items-start mb-3">
                             <div>
-                                <p className="font-bold text-lg">{item.title}</p>
+                                <p className="font-bold text-lg">{item.action_name}</p>
                                 <p className="text-xs text-neutral-500 font-mono">{item.walletAddress}</p>
                             </div>
                             <span className="px-2 py-1 rounded bg-white/10 text-xs font-bold">+{item.points} Pts</span>

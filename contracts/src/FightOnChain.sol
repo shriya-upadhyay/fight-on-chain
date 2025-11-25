@@ -5,11 +5,8 @@ contract FightOnChain {
 
     struct Player {
         address walletAddress;
-        string name;
         uint256 score;
-        string tribe;
-        uint256 joinDate;
-        bool isActive;
+       
     }
 
     struct Admin {
@@ -19,47 +16,28 @@ contract FightOnChain {
         bool isActive;
     }
 
-    Admin [] public admins = [
-        Admin(0xE19496E993F05Ec1B03D1d456dF6B8227E50deA1, "Shriya", block.timestamp, true)
-    ];
+    Admin [] public admins;
 
-    // Helper function to check if address is an active admin
-    function isAdmin(address addr) public view returns (bool) {
-        for (uint256 i = 0; i < admins.length; i++) {
-            if (admins[i].walletAddress == addr && admins[i].isActive) {
-                return true;
-            }
-        }
-        return false;
-    }
+    Player [] public players;
+
+    mapping(address => bool) public isAdmin;
+
 
     modifier onlyAdmin() {
-        require(isAdmin(msg.sender), "Only admins can perform this action");
+        require(isAdmin[msg.sender], "Only admins can perform this action");
         _;
     }
 
-    Player [] public players = [
-        Player(0xE19496E993F05Ec1B03D1d456dF6B8227E50deA1, "Shriya", 100, "Genesis", block.timestamp, true)
-    ];
-
-
     function addAdmin(address walletAddress, string memory name) public onlyAdmin {
+        require(!isAdmin[walletAddress], "Already admin");
+        isAdmin[walletAddress] = true;
         admins.push(Admin(walletAddress, name, block.timestamp, true));
+        
     }
 
-    function addPlayer(address walletAddress, string memory name, uint256 score, string memory tribe) public {
-        players.push(Player(walletAddress, name, score, tribe, block.timestamp, true));
-    }
-
-    function removePlayer(address walletAddress) public onlyAdmin {
-        for (uint256 i = 0; i < players.length; i++) {
-            if (players[i].walletAddress == walletAddress) {
-                players[i].isActive = false;
-            }
-        }
-    }
-
+    
     function removeAdmin(address walletAddress) public onlyAdmin {
+        isAdmin[walletAddress] = false;
         for (uint256 i = 0; i < admins.length; i++) {
             if (admins[i].walletAddress == walletAddress) {
                 admins[i].isActive = false;
@@ -67,12 +45,35 @@ contract FightOnChain {
         }
     }
 
-    function getAdmins() public view returns (Admin[] memory) {
-        return admins;
+    function getAdmins() public view returns (address[] memory) {
+        uint256 count = 0;
+        for (uint256 i = 0; i < admins.length; i++) {
+            if (admins[i].isActive) count++;
+        }
+
+        address[] memory activeAdmins = new address[](count);
+        uint256 index = 0;
+        for (uint256 i = 0; i < admins.length; i++) {
+            if (admins[i].isActive) {
+                activeAdmins[index] = admins[i].walletAddress;
+                index++;
+            }
+        }
+        return activeAdmins;
     }
 
-    function getPlayers() public view returns (Player[] memory) {
-        return players;
+    function getAdminByAddress(address addr) public view returns (Admin memory) {
+    require(isAdmin[addr], "Not an admin");
+    for (uint256 i = 0; i < admins.length; i++) {
+        if (admins[i].walletAddress == addr && admins[i].isActive) {
+            return admins[i];
+        }
+    }
+    revert("Admin not found");
+    }
+
+    function addPlayer(address walletAddress, uint256 score) public onlyAdmin {
+        players.push(Player(walletAddress, score));
     }
 
     function updatePlayerScore(address walletAddress, uint256 score) public onlyAdmin {
@@ -81,5 +82,11 @@ contract FightOnChain {
                 players[i].score += score;
             }
         }
+    }
+
+    constructor() {
+        address initialAdmin = 0xE19496E993F05Ec1B03D1d456dF6B8227E50deA1;
+        isAdmin[initialAdmin] = true;
+        admins.push(Admin(initialAdmin, "Shriya", block.timestamp, true));
     }
 }

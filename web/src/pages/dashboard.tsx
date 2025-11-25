@@ -4,7 +4,10 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useEnsAvatar, useEnsName } from 'wagmi';
 import Link from 'next/link';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
-import Navbar from '../components/Navbar';  // Add this import
+import Navbar from '../components/Navbar';  
+import FightOnChain from '../utils/FightOnChain.json';
+
+const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '') as `0x${string}`;
 
 export default function Dashboard() {
     const { address, isConnected } = useAccount();
@@ -18,7 +21,6 @@ export default function Dashboard() {
                 <title>Dashboard | Fight On-Chain</title>
             </Head>
 
-            {/* Replace the nav section with Navbar component */}
             <Navbar variant="standard" />
 
             <main className="pt-32 pb-20 px-6 max-w-7xl mx-auto">

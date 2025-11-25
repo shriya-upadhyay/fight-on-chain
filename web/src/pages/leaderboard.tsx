@@ -1,6 +1,8 @@
 import Head from "next/head";
 import Navbar from "../components/Navbar";
 import { useAllPlayers } from "../hooks/useAllPlayers";
+import FightOnChain from "../utils/FightOnChain.json";
+const contractAddress = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '') as `0x${string}`;
 
 const mockPlayers = [
     { walletAddress: '0x1234567890abcdef1234567890abcdef12345678', name: 'Ava Solaris', score: BigInt(240), tribe: 'Genesis', joinDate: "2025-12-17T03:24:00-08:00", isActive: true },
@@ -11,10 +13,7 @@ const mockPlayers = [
 ];
 
 function Leaderboard() {
-    // const { players, isLoading, isError } = useAllPlayers();
-    const players = mockPlayers;
-    const isLoading = false;
-    const isError = false;
+    const { players, isLoading, isError } = useAllPlayers();
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-red-900/30 selection:text-white overflow-x-hidden">

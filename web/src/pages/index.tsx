@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 
 export default function Home() {
-  const { isConnected } = useAccount();  
+  const { address, isConnected } = useAccount();  
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-red-900/30 selection:text-white overflow-x-hidden">
       <Head>

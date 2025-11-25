@@ -1,11 +1,68 @@
 import Head from 'next/head';
 import Navbar from '../components/Navbar';
+import { useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+
 
 function SubmitEvidence() {
-    const handleSubmitEvidence = (e: React.FormEvent<HTMLFormElement>) => {
+  const [loading, setLoading] = useState(false);
+    const handleSubmitEvidence = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log("Submit Evidence");
-    };
+        setLoading(true);
+
+        const form = e.currentTarget;
+        const points = form.evidenceType.value;
+        const actionName = form.evidenceType.options[form.evidenceType.selectedIndex].text;
+        const description = (form.elements.namedItem("description") as HTMLTextAreaElement).value;
+        const fileInput = form.elements.namedItem("proofFile") as HTMLInputElement;
+        const eventDate = (form.elements.namedItem("date") as HTMLInputElement).value;
+        const file = fileInput.files?.[0];
+
+        try {
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log(user)
+      if (!user) throw new Error("You must be logged in.");
+
+      let proofUrl = null;
+      if (file) {
+        const filePath = `${user.id}/${Date.now()}-${file.name}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("proofs")
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("proofs")
+          .getPublicUrl(filePath);
+
+        proofUrl = urlData.publicUrl;
+      }
+
+      const { error: insertError } = await supabase
+        .from("user_actions")
+        .insert({
+          user_id: user.id,
+          action_name: actionName,
+          description: description,
+          proof_photo_url: proofUrl,
+          approved: false,
+          points: parseInt(points),
+          event_date: eventDate,
+        });
+
+      if (insertError) throw insertError;
+
+      alert("Submission received!");
+      form.reset();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-red-900/30 selection:text-white overflow-x-hidden">
           <Head>
@@ -49,6 +106,7 @@ function SubmitEvidence() {
               Evidence Description
             </label>
             <textarea
+              name="description"
               placeholder="Share context, links, etc. If it's a coffee chat, share the name of the person you chatted with!"
               className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-red-500/60 focus:outline-none text-sm text-neutral-100 min-h-[100px]"
             />
@@ -58,7 +116,7 @@ function SubmitEvidence() {
             <label className="text-xs text-neutral-500 uppercase tracking-[0.3em]">
               Date of Event
             </label>
-            <input type="date" className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-red-500/60 focus:outline-none text-sm text-neutral-100" />
+            <input type="date" name="date" className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-red-500/60 focus:outline-none text-sm text-neutral-100" />
           </div>
 
           <div className="space-y-2">
@@ -66,7 +124,7 @@ function SubmitEvidence() {
               Upload Proof
             </label>
             <div className="relative flex items-center justify-center border border-dashed border-neutral-700 rounded-xl bg-black/30 px-4 py-6 text-center">
-              <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
+              <input type="file" name = "proofFile" className="absolute inset-0 opacity-0 cursor-pointer" />
               <div className="space-y-1">
                 <p className="text-sm text-neutral-300">Drag & drop or click to upload</p>
                 <p className="text-xs text-neutral-500">PDF, image, or video up to 25MB</p>
@@ -87,3 +145,4 @@ function SubmitEvidence() {
 }
 
 export default SubmitEvidence;
+
