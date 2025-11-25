@@ -1,7 +1,6 @@
 import Head from 'next/head';
 import Navbar from '../components/Navbar';
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
 import { supabase } from '../lib/supabaseClient';
 
 
@@ -9,17 +8,9 @@ function SubmitEvidence() {
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const { address, isConnected } = useAccount();
-
     const handleSubmitEvidence = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-
-        if (!isConnected || !address) {
-          alert("Please connect your wallet first.");
-          setLoading(false);
-          return;
-        }
 
         const form = e.currentTarget;
         const points = form.evidenceType.value;
@@ -30,26 +21,13 @@ function SubmitEvidence() {
         const file = fileInput.files?.[0];
 
         try {
-      // Get the user from the users table based on wallet address
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, wallet_address')
-        .eq('wallet_address', address.toLowerCase())
-        .single();
-
-      if (userError || !userData) {
-        throw new Error("User not found. Please make sure you're registered in the system. Contact an admin if you need to be added.");
-      }
-
-      const userId = userData.id;
-
-      // Get auth user for file path (optional, can use wallet address instead)
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      const filePathPrefix = authUser?.id || address.toLowerCase();
+      // Get auth user - the id should match the users table id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("You must be logged in.");
 
       let proofUrl = null;
       if (file) {
-        const filePath = `${filePathPrefix}/${Date.now()}-${file.name}`;
+        const filePath = `${user.id}/${Date.now()}-${file.name}`;
 
         const { error: uploadError } = await supabase.storage
           .from("proofs")
@@ -67,7 +45,7 @@ function SubmitEvidence() {
       const { error: insertError } = await supabase
         .from("actions")
         .insert({
-          user_id: userId,
+          user_id: user.id, // This should match the users table id
           name: actionName,
           description: description,
           proof_photo: proofUrl,
