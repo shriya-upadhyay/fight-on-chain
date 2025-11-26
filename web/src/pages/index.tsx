@@ -9,6 +9,9 @@ import { useAllPlayers } from '../hooks/useAllPlayers';
 export default function Home() {
   const { address, isConnected } = useAccount();    
   const { players, isError, isLoading } = useAllPlayers(address || '');
+  const startDate = new Date(process.env.NEXT_PUBLIC_START_DATE?.toString() || ' ');
+  const msPerWeek = 1000 * 60 * 60 * 24 * 7;
+  const week = Math.ceil((Date.now() - startDate.getTime()) / msPerWeek);
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-red-900/30 selection:text-white overflow-x-hidden">
       <Head>
@@ -96,7 +99,7 @@ export default function Home() {
             
             <div>
                 <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">Status</p>
-                <p className="text-4xl font-serif text-white">Week 01</p>
+                <p className="text-4xl font-serif text-white">Week {week}</p>
             </div>
             
             <div className="space-y-4 mt-12 relative z-10">
@@ -106,7 +109,7 @@ export default function Home() {
                 </div>
                 <div className="flex justify-between items-baseline border-b border-white/5 pb-2">
                     <span className="text-sm text-neutral-500">Prize Pool</span>
-                    <span className="text-base text-neutral-200 font-serif">0.5 ETH</span>
+                    <span className="text-base text-neutral-200 font-serif">{process.env.NEXT_PUBLIC_PRIZE} ETH</span>
                 </div>
             </div>
           </div>
