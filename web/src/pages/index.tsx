@@ -3,10 +3,12 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import Navbar from '../components/Navbar';
 import Link from 'next/link';  
+import { useAllPlayers } from '../hooks/useAllPlayers';
 
 
 export default function Home() {
-  const { address, isConnected } = useAccount();  
+  const { address, isConnected } = useAccount();    
+  const { players, isError, isLoading } = useAllPlayers(address || '');
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-red-900/30 selection:text-white overflow-x-hidden">
       <Head>
@@ -66,7 +68,7 @@ export default function Home() {
                     <div key={i} className="inline-block h-8 w-8 rounded-full ring-2 ring-black bg-neutral-800" />
                   ))}
                </div>
-               <p className="text-xs font-medium text-neutral-500">142 Students Active</p>
+               <p className="text-xs font-medium text-neutral-500">{players.length} Students Active</p>
             </div>
           </div>
         </div>
@@ -84,7 +86,7 @@ export default function Home() {
             <div className="space-y-6">
                 <ProtocolStep number="01" title="Whitelist" desc="Secure your invite via the club registration form." />
                 <ProtocolStep number="02" title="Verify" desc="Prove attendance at club events on-chain." />
-                <ProtocolStep number="03" title="Ascend" desc="Accumulate points. Avoid weekly elimination." />
+                <ProtocolStep number="03" title="Ascend" desc="Accumulate points. Win prizes." />
             </div>
           </div>
 
