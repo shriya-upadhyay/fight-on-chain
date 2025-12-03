@@ -9,9 +9,10 @@ import { useAllPlayers } from '../hooks/useAllPlayers';
 export default function Home() {
   const { address, isConnected } = useAccount();    
   const { players, isError, isLoading } = useAllPlayers(address || '');
-  const startDate = new Date(process.env.NEXT_PUBLIC_START_DATE?.toString() || ' ');
+  const startDate = new Date(process.env.NEXT_PUBLIC_START_DATE?.toString() || ' ')
   const msPerWeek = 1000 * 60 * 60 * 24 * 7;
   const week = Math.ceil((Date.now() - startDate.getTime()) / msPerWeek);
+  console.log(process.env.NEXT_PUBLIC_START_DATE)
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-red-900/30 selection:text-white overflow-x-hidden">
       <Head>
